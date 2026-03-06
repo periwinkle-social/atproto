@@ -51,7 +51,7 @@ jobs:
             ${{ steps.ecr-login.outputs.registry }}/${{ env.IMAGE_NAME }}
           tags: |
             type=sha,prefix=,format=short
-            type=raw,value=latest
+            type=raw,value=${{ github.event.inputs.environment || 'dev' }}-latest
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
