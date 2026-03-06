@@ -1,0 +1,66 @@
+name: build-and-push-pds
+
+on:
+  push:
+    branches:
+      - feat/configurable-actor-key-directory
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    # Auto-push goes to dev; manual dispatch chooses the environment
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      IMAGE_NAME: periwinkle/pds
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.PDS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-central-1
+
+      - name: Log in to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          file: ./services/pds/Dockerfile
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
