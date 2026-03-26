@@ -115,8 +115,20 @@ jobs:
             ${{ steps.ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${SHA}
           docker push ${{ steps.ecr.outputs.registry }}/${{ env.IMAGE_NAME }}:${SHA}
 
+  trigger-deploy:
+    needs: [build, push-dev]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger PDS deploy
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.PDS_DEPLOY_PAT }}
+          repository: periwinkle-social/pds
+          event-type: pds-image-update
+          client-payload: '{"image_tag": "${{ needs.build.outputs.short_sha }}", "environment": "dev"}'
+
   summary:
-    needs: [build, push-dev, push-prod]
+    needs: [build, push-dev, push-prod, trigger-deploy]
     runs-on: ubuntu-latest
     steps:
       - name: Summary
@@ -125,4 +137,4 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Tag:** \`${{ needs.build.outputs.short_sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "To deploy, update \`pds_fork_image\` tag in the infra repo to \`${{ needs.build.outputs.short_sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "Dev deployment triggered automatically via repository dispatch to periwinkle-social/pds." >> $GITHUB_STEP_SUMMARY
