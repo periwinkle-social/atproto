@@ -120,12 +120,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger PDS deploy
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.PDS_DEPLOY_PAT }}
-          repository: periwinkle-social/pds
-          event-type: pds-image-update
-          client-payload: '{"image_tag": "${{ needs.build.outputs.short_sha }}", "environment": "dev"}'
+        run: |
+          gh api repos/periwinkle-social/pds/dispatches \
+            --method POST \
+            -f event_type=pds-image-update \
+            -f 'client_payload[image_tag]=${{ needs.build.outputs.short_sha }}' \
+            -f 'client_payload[environment]=dev'
+        env:
+          GH_TOKEN: ${{ secrets.PDS_DEPLOY_PAT }}
 
   summary:
     needs: [build, push-dev, push-prod, trigger-deploy]
