@@ -13,6 +13,18 @@ schemas.
 **This repo uses pnpm** (v8.15.9). All other Periwinkle repos use npm — do NOT
 use npm here.
 
+## GitHub CLI — fork gotcha
+
+This repo is a fork of `bluesky-social/atproto`. `gh pr create` defaults to the
+**parent** repo, so without `--repo` it will open PRs against upstream Bluesky.
+Always pass `--repo periwinkle-social/atproto` when creating PRs here:
+
+```bash
+gh pr create --repo periwinkle-social/atproto --base main ...
+```
+
+Same applies to `gh pr list`, `gh pr view`, etc. when you mean our fork.
+
 ## Commands
 
 ```bash
