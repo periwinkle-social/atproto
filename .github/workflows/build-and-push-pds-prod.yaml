@@ -83,8 +83,57 @@ jobs:
           docker push "${FULL_IMAGE}"
           echo "full_image=${FULL_IMAGE}" >> $GITHUB_OUTPUT
 
+  # Auto-rollout disabled. To re-enable, uncomment the trigger-prod-deploy job
+  # below AND restore `trigger-prod-deploy` to the summary job's `needs` and
+  # echo step.
+  #
+  # trigger-prod-deploy:
+  #   needs: [build, push-prod]
+  #   runs-on: ubuntu-latest
+  #   environment: prod
+  #   permissions:
+  #     contents: read
+  #     id-token: write
+  #   steps:
+  #     - name: Configure AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         role-to-assume: ${{ vars.PDS_DEPLOY_ROLE_ARN }}
+  #         aws-region: eu-central-1
+  #
+  #     - name: Trigger pds-control-plane update-images
+  #       env:
+  #         TASK_DEFINITION: ${{ vars.PDS_CONTROL_PLANE_TASK_DEFINITION_FAMILY }}
+  #         CLUSTER: ${{ vars.PDS_CONTROL_PLANE_CLUSTER_ARN }}
+  #         SUBNETS: ${{ vars.PDS_CONTROL_PLANE_SUBNETS }}
+  #         SECURITY_GROUPS: ${{ vars.PDS_CONTROL_PLANE_SECURITY_GROUPS }}
+  #         IMAGE_TAG: ${{ github.event.release.tag_name || needs.build.outputs.short_sha }}
+  #         OPERATION_ID: ${{ github.run_id }}
+  #         ENVIRONMENT: prod
+  #         REGION: eu-central-1
+  #       run: |
+  #         SUBNETS_JSON=$(echo "$SUBNETS" | jq -R 'split(",")')
+  #         SGS_JSON=$(echo "$SECURITY_GROUPS" | jq -R 'split(",")')
+  #         aws ecs run-task \
+  #           --cluster "$CLUSTER" \
+  #           --task-definition "$TASK_DEFINITION" \
+  #           --launch-type FARGATE \
+  #           --network-configuration "awsvpcConfiguration={subnets=${SUBNETS_JSON},securityGroups=${SGS_JSON},assignPublicIp=DISABLED}" \
+  #           --overrides "{
+  #             \"containerOverrides\": [{
+  #               \"name\": \"pds-control-plane\",
+  #               \"command\": [\"update-images\"],
+  #               \"environment\": [
+  #                 {\"name\": \"OPERATION_ID\", \"value\": \"${OPERATION_ID}\"},
+  #                 {\"name\": \"REGION\", \"value\": \"${REGION}\"},
+  #                 {\"name\": \"ENVIRONMENT\", \"value\": \"${ENVIRONMENT}\"},
+  #                 {\"name\": \"IMAGE_TAG\", \"value\": \"${IMAGE_TAG}\"}
+  #               ]
+  #             }]
+  #           }"
+
   summary:
-    needs: [build, push-prod]
+    needs: [build, push-prod] # add trigger-prod-deploy when re-enabling
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -96,3 +145,4 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Prod" >> $GITHUB_STEP_SUMMARY
           echo "- push-prod: \`${{ needs.push-prod.result }}\`" >> $GITHUB_STEP_SUMMARY
+          # echo "- trigger-prod-deploy: \`${{ needs.trigger-prod-deploy.result }}\`" >> $GITHUB_STEP_SUMMARY
