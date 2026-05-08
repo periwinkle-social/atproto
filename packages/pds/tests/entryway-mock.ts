@@ -23,6 +23,11 @@ interface Account {
   did: DidString
   handle: HandleString
   email?: string
+  // Optional pre-flight password — set when the account is staged via
+  // stagePreFlight() so social.pwkl.migration.lookup can verify against it.
+  password?: string
+  // Hostname of the PDS this account is pinned to. Set when staged.
+  pdsHostname?: string
 }
 
 interface MockEntrywayOpts {
@@ -267,6 +272,88 @@ export class MockEntryway {
       },
     })
 
+    // Periwinkle migrate-in lookup. Periwinkle-internal endpoint (not part
+    // of AT Protocol), so it lives outside the typed lexicons. Mounted as a
+    // raw express route on the same xrpc-server router.
+    //
+    // Admin-Basic auth is checked but not strictly verified — the mock
+    // accepts the configured opts.adminPassword. Verifies the staged
+    // pre-flight binding, mints a token pair signed with the same
+    // jwtPrivateKey the createAccount handler uses, returns
+    // {accessJwt, refreshJwt}.
+    const expectedAdminAuth = `Basic ${Buffer.from(
+      `admin:${opts.adminPassword}`,
+    ).toString('base64')}`
+    server.routes.post(
+      '/xrpc/social.pwkl.migration.lookup',
+      (req, res, next) => {
+        const chunks: Buffer[] = []
+        req.on('data', (chunk: Buffer) => chunks.push(chunk))
+        req.on('end', () => {
+          ;(async () => {
+            if (req.headers.authorization !== expectedAdminAuth) {
+              res.status(401).json({ error: 'AuthMissing' })
+              return
+            }
+            let body: Record<string, unknown>
+            try {
+              body = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+            } catch {
+              res.status(400).json({ error: 'InvalidRequest' })
+              return
+            }
+            const { did, pdsHostname, handle, password } = body as {
+              did?: string
+              pdsHostname?: string
+              handle?: string
+              password?: string
+            }
+            if (!did || !pdsHostname || !handle || !password) {
+              res
+                .status(400)
+                .json({ error: 'InvalidRequest', message: 'missing fields' })
+              return
+            }
+            const account = accounts.get(did)
+            if (
+              !account ||
+              account.handle !== handle ||
+              account.password !== password ||
+              account.pdsHostname !== pdsHostname
+            ) {
+              res.status(400).json({
+                error: 'InvalidRequest',
+                message: 'pre-flight binding does not match',
+              })
+              return
+            }
+            const now = Math.floor(Date.now() / 1000)
+            const accessJwt = await new jose.SignJWT({
+              scope: 'com.atproto.access',
+            })
+              .setProtectedHeader({ alg: 'ES256K', typ: 'at+jwt' })
+              .setSubject(did)
+              .setAudience(opts.pdsDid)
+              .setIssuedAt(now)
+              .setExpirationTime(now + 60 * 60)
+              .setJti(randomStr(16, 'base32'))
+              .sign(jwtPrivateKey)
+            const refreshJwt = await new jose.SignJWT({
+              scope: 'com.atproto.refresh',
+            })
+              .setProtectedHeader({ alg: 'ES256K', typ: 'at+jwt' })
+              .setSubject(did)
+              .setAudience(opts.pdsDid)
+              .setIssuedAt(now)
+              .setExpirationTime(now + 90 * 24 * 60 * 60)
+              .setJti(randomStr(16, 'base32'))
+              .sign(jwtPrivateKey)
+            res.json({ accessJwt, refreshJwt })
+          })().catch(next)
+        })
+      },
+    )
+
     server.add(com.atproto.identity.updateHandle, {
       auth: serviceAuth,
       handler: async ({ auth, input }) => {
@@ -309,6 +396,26 @@ export class MockEntryway {
 
   getAccount(did: string): Account | undefined {
     return this.accounts.get(did)
+  }
+
+  // Stage a pre-flight binding for the goat migrate-in path. Mirrors the
+  // auth-side pre-flight insert: stores the {did, handle, password,
+  // pdsHostname} tuple that social.pwkl.migration.lookup will verify
+  // against during the patched-PDS createAccount call.
+  stagePreFlight(opts: {
+    did: DidString
+    handle: HandleString
+    password: string
+    pdsHostname: string
+    email?: string
+  }): void {
+    this.accounts.set(opts.did, {
+      did: opts.did,
+      handle: opts.handle,
+      email: opts.email,
+      password: opts.password,
+      pdsHostname: opts.pdsHostname,
+    })
   }
 
   async destroy(): Promise<void> {
