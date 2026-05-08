@@ -284,7 +284,7 @@ export class MockEntryway {
     const expectedAdminAuth = `Basic ${Buffer.from(
       `admin:${opts.adminPassword}`,
     ).toString('base64')}`
-    server.router.post(
+    server.routes.post(
       '/xrpc/social.pwkl.migration.lookup',
       (req, res, next) => {
         const chunks: Buffer[] = []
