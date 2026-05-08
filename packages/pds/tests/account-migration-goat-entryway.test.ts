@@ -94,7 +94,7 @@ describe('createAccount goat-migrate-in sub-branch', () => {
       did: sourceDid,
       handle,
       password,
-      pdsHostname: new URL(pds.url).host,
+      pdsHostname: new URL(pds.url).hostname,
       email: 'alice@example.com',
     })
   })
