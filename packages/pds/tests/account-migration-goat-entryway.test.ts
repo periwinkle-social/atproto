@@ -8,7 +8,7 @@ import { isDidString } from '@atproto/lex'
 import { DidString, HandleString } from '@atproto/syntax'
 import { createServiceAuthHeaders } from '@atproto/xrpc-server'
 import { com } from '../src/lexicons/index.js'
-import { MockEntryway } from './entryway-mock'
+import { MockEntryway } from './entryway-mock.js'
 
 /**
  * Periwinkle fork patch — goat-driven migrate-in sub-branch.
