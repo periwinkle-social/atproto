@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/periwinkle-social/atproto/compare/atproto-pds-fork-v0.1.1...atproto-pds-fork-v0.1.2) (2026-06-03)
+
+
+### CI/CD
+
+* **pds-dev:** skip redundant dev build on release-please release commit ([#12](https://github.com/periwinkle-social/atproto/issues/12)) ([8f139fd](https://github.com/periwinkle-social/atproto/commit/8f139fd0d5ab92fee6a978ade85d038fde607003))
+
 ## [0.1.1](https://github.com/periwinkle-social/atproto/compare/atproto-pds-fork-v0.1.0...atproto-pds-fork-v0.1.1) (2026-06-03)
 
 
