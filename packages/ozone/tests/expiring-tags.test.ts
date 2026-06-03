@@ -4,8 +4,8 @@ import {
   TestNetwork,
   basicSeed,
 } from '@atproto/dev-env'
-import { EventReverser } from '../src/daemon/event-reverser'
-import { REASONSPAM } from '../src/lexicon/types/com/atproto/moderation/defs'
+import { EventReverser } from '../src/daemon/event-reverser.js'
+import { REASONSPAM } from '../src/lexicon/types/com/atproto/moderation/defs.js'
 
 describe('expiring tags', () => {
   let network: TestNetwork
@@ -192,6 +192,7 @@ describe('expiring tags', () => {
         eventId: 0,
         did: sc.dids.carol,
         recordPath: '',
+        convoId: '',
         tag: 'skip-tag',
         expiresAt: new Date(Date.now() - 1000).toISOString(),
         createdBy: sc.dids.alice,

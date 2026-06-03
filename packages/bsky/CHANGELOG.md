@@ -1,5 +1,121 @@
 # @atproto/bsky
 
+## 0.0.237
+
+### Patch Changes
+
+- [#5031](https://github.com/bluesky-social/atproto/pull/5031) [`df57268`](https://github.com/bluesky-social/atproto/commit/df572689465f9836223cc79ad6e106be96e20eda) Thanks [@estrattonbailey](https://github.com/estrattonbailey)! - Prefer opengraph image, fall back to Standard Site `document.coverImage`
+
+## 0.0.236
+
+### Patch Changes
+
+- [#5016](https://github.com/bluesky-social/atproto/pull/5016) [`cf6a8a5`](https://github.com/bluesky-social/atproto/commit/cf6a8a50a990d8759d076778f0f90800005b48c0) Thanks [@blackmichael](https://github.com/blackmichael)! - Fix `verificationView`'s `displayName` and `handle` to reflect the verification issuer rather than the subject, and rename them to `issuerDisplayName` and `issuerHandle`. These fields were introduced in #5015 to expose the issuer's identity, but were inadvertently being populated with the subject's snapshot stored on the verification record.
+
+- [#5015](https://github.com/bluesky-social/atproto/pull/5015) [`0ac21bb`](https://github.com/bluesky-social/atproto/commit/0ac21bbf6db0bcb745adecf064eded1452be02de) Thanks [@blackmichael](https://github.com/blackmichael)! - add displayName, handle to verification view
+
+- [#5020](https://github.com/bluesky-social/atproto/pull/5020) [`3cb2a41`](https://github.com/bluesky-social/atproto/commit/3cb2a41157a2bd7783f3fc1a06c4c811d9c541e6) Thanks [@estrattonbailey](https://github.com/estrattonbailey)! - Loosen validation for known Standard Site publishers in order to support quote URLs
+
+- Updated dependencies [[`8a9e757`](https://github.com/bluesky-social/atproto/commit/8a9e7578eb0f6afcb460061550e435ea9ed125ff), [`682e325`](https://github.com/bluesky-social/atproto/commit/682e325b2bce62216d034a8f5b9429f485b9360d), [`47c71fc`](https://github.com/bluesky-social/atproto/commit/47c71fcc157258c2f5dbe43ba2b27a5af7856341), [`3affdd5`](https://github.com/bluesky-social/atproto/commit/3affdd5eeee30b09cbb7a92e8296a6cda55022a3)]:
+  - @atproto/api@0.20.7
+
+## 0.0.235
+
+### Patch Changes
+
+- [#5001](https://github.com/bluesky-social/atproto/pull/5001) [`92ed125`](https://github.com/bluesky-social/atproto/commit/92ed125c27178bec1cb737ec15307334170768b7) Thanks [@estrattonbailey](https://github.com/estrattonbailey)! - Ensure `associatedProfiles` is returned for Standard Site external embed views
+
+- [#5004](https://github.com/bluesky-social/atproto/pull/5004) [`1a74fa5`](https://github.com/bluesky-social/atproto/commit/1a74fa559778392683f803e1bed71cd25e672114) Thanks [@blackmichael](https://github.com/blackmichael)! - Fix app.bsky.embed.getEmbedExternalView associatedProfiles duplicate data
+
+- Updated dependencies [[`126ac1e`](https://github.com/bluesky-social/atproto/commit/126ac1ead8c44065e3fa7c02efba7bd20551ee99), [`60721e6`](https://github.com/bluesky-social/atproto/commit/60721e69c8db193eb817c4238ac447505ac855bc), [`60721e6`](https://github.com/bluesky-social/atproto/commit/60721e69c8db193eb817c4238ac447505ac855bc), [`622d365`](https://github.com/bluesky-social/atproto/commit/622d365aeb240133f40763a3b1c43981112837fc)]:
+  - @atproto/api@0.20.6
+  - @atproto/lex@0.1.3
+  - @atproto/did@0.5.0
+
+## 0.0.234
+
+### Patch Changes
+
+- [#4993](https://github.com/bluesky-social/atproto/pull/4993) [`9378a82`](https://github.com/bluesky-social/atproto/commit/9378a82740529a7004e280fe71e91c611acc3905) Thanks [@blackmichael](https://github.com/blackmichael)! - Add associatedProfiles to app.bsky.embed.getEmbedExternalView output
+
+- [#4995](https://github.com/bluesky-social/atproto/pull/4995) [`753ac51`](https://github.com/bluesky-social/atproto/commit/753ac51fde9d1feea8128745c049584a995855f7) Thanks [@estrattonbailey](https://github.com/estrattonbailey)! - Update Standard Site validation to fix path resolution
+
+- Updated dependencies [[`4984994`](https://github.com/bluesky-social/atproto/commit/4984994f7d3f0773b03c61dccd68286e42e0c6af)]:
+  - @atproto/api@0.20.5
+
+## 0.0.233
+
+### Patch Changes
+
+- [#4983](https://github.com/bluesky-social/atproto/pull/4983) [`1259646`](https://github.com/bluesky-social/atproto/commit/125964673962a86282a05bf22f410fad8ad06b41) Thanks [@matthieusieben](https://github.com/matthieusieben)! - remove un-necessary use of `$defs` accessor
+
+- Updated dependencies [[`5bdb4ad`](https://github.com/bluesky-social/atproto/commit/5bdb4addd6a3798bf6c8c391c74044b3e251008a), [`57ecbda`](https://github.com/bluesky-social/atproto/commit/57ecbdac3eb14fdbc853456371e84a5098e91c4b), [`314df62`](https://github.com/bluesky-social/atproto/commit/314df62537bb519231aa375dd3a38360afc79ce0), [`604e16d`](https://github.com/bluesky-social/atproto/commit/604e16dda2972f0e17cedefc49dafd4ecbfda8f9), [`1259646`](https://github.com/bluesky-social/atproto/commit/125964673962a86282a05bf22f410fad8ad06b41)]:
+  - @atproto/lex@0.1.2
+  - @atproto/xrpc-server@0.11.1
+  - @atproto/api@0.20.3
+
+## 0.0.232
+
+### Patch Changes
+
+- [#4964](https://github.com/bluesky-social/atproto/pull/4964) [`571582e`](https://github.com/bluesky-social/atproto/commit/571582ea9b1aea56938b8f24daaf49e197a987ef) Thanks [@matthieusieben](https://github.com/matthieusieben)! - Remove proto buf generated code from version control
+
+- [#4960](https://github.com/bluesky-social/atproto/pull/4960) [`53b1e07`](https://github.com/bluesky-social/atproto/commit/53b1e0731ee0d13c350dd96cbcab88447eaad441) Thanks [@matthieusieben](https://github.com/matthieusieben)! - Update protobuf to add `.js` extension
+
+- Updated dependencies [[`37c6fe6`](https://github.com/bluesky-social/atproto/commit/37c6fe6caeaf1b6ca598d6147e74c954c5a24854), [`4801600`](https://github.com/bluesky-social/atproto/commit/48016005155c9cecabf3fa9d5e9b3555e84e2dca), [`e6c6343`](https://github.com/bluesky-social/atproto/commit/e6c6343bd3727455bd0da12300bb4929a944e4f1), [`8eb0662`](https://github.com/bluesky-social/atproto/commit/8eb0662ac38a915c7a0c669e739fc8afc3ed7e7b), [`25e0233`](https://github.com/bluesky-social/atproto/commit/25e02339a383740e762c9a9633a701d2fb0cab86)]:
+  - @atproto/api@0.20.1
+  - @atproto/sync@0.3.1
+  - @atproto/common@0.6.1
+  - @atproto/lex@0.1.1
+
+## 0.0.231
+
+### Patch Changes
+
+- [#4929](https://github.com/bluesky-social/atproto/pull/4929) [`f01c59f`](https://github.com/bluesky-social/atproto/commit/f01c59f5bd3f75fb8b47a9eecd4858b84033fb7c) Thanks [@devinivy](https://github.com/devinivy)! - **BREAKING:** Drop support for Node.js 18 and 20. Node.js 22 is now the minimum supported version. Docker images now use Node.js 24.
+
+- [#4943](https://github.com/bluesky-social/atproto/pull/4943) [`c459153`](https://github.com/bluesky-social/atproto/commit/c459153395a30ce89e050892c8fab7dc98e019b9) Thanks [@devinivy](https://github.com/devinivy)! - **BREAKING:** Convert to pure ESM. All packages now ship `"type": "module"` with ES module output and Node16 module resolution.
+
+  Node.js 22's `require()` compatibility layer can still load these packages in CommonJS code.
+
+- [#4930](https://github.com/bluesky-social/atproto/pull/4930) [`908bece`](https://github.com/bluesky-social/atproto/commit/908bece169258bff5ad121e5eec157d6ded6f705) Thanks [@devinivy](https://github.com/devinivy)! - Build with TypeScript 6.0.
+
+- Updated dependencies [[`affb50c`](https://github.com/bluesky-social/atproto/commit/affb50c040b497a12631df99a6310f8e78cab557), [`f01c59f`](https://github.com/bluesky-social/atproto/commit/f01c59f5bd3f75fb8b47a9eecd4858b84033fb7c), [`c459153`](https://github.com/bluesky-social/atproto/commit/c459153395a30ce89e050892c8fab7dc98e019b9), [`f01c59f`](https://github.com/bluesky-social/atproto/commit/f01c59f5bd3f75fb8b47a9eecd4858b84033fb7c), [`908bece`](https://github.com/bluesky-social/atproto/commit/908bece169258bff5ad121e5eec157d6ded6f705)]:
+  - @atproto/common@0.6.0
+  - @atproto/api@0.20.0
+  - @atproto/crypto@0.5.0
+  - @atproto/did@0.4.0
+  - @atproto/identity@0.5.0
+  - @atproto/lex@0.1.0
+  - @atproto/repo@0.10.0
+  - @atproto/sync@0.3.0
+  - @atproto/syntax@0.6.0
+  - @atproto/xrpc-server@0.11.0
+  - @atproto-labs/fetch-node@0.3.0
+  - @atproto-labs/xrpc-utils@0.1.0
+
+## 0.0.230
+
+### Patch Changes
+
+- Updated dependencies [[`cb13878`](https://github.com/bluesky-social/atproto/commit/cb1387899f0b296759ebdf5b8985b6b573091a9a), [`ea4184b`](https://github.com/bluesky-social/atproto/commit/ea4184b9beb9821d806a9540223dab55c2628184), [`38bc2fa`](https://github.com/bluesky-social/atproto/commit/38bc2faa142d42f95c5b89b5a10bf8ed607fe39f)]:
+  - @atproto/api@0.19.19
+  - @atproto/lex@0.0.27
+  - @atproto/xrpc-server@0.10.22
+  - @atproto/sync@0.2.4
+
+## 0.0.229
+
+### Patch Changes
+
+- [#4919](https://github.com/bluesky-social/atproto/pull/4919) [`733d557`](https://github.com/bluesky-social/atproto/commit/733d557d8314265d2c9bdee8d77ba49941dc5d81) Thanks [@rafaeleyng](https://github.com/rafaeleyng)! - update courier proto
+
+- Updated dependencies [[`8ffae17`](https://github.com/bluesky-social/atproto/commit/8ffae17323df37f2be1dd7286bb9443fa1aa5b42), [`4502df1`](https://github.com/bluesky-social/atproto/commit/4502df140600fc74ef5b69db84ff4529797f3ca3)]:
+  - @atproto/api@0.19.17
+  - @atproto/lex@0.0.26
+  - @atproto/xrpc-server@0.10.21
+  - @atproto/sync@0.2.3
+
 ## 0.0.228
 
 ### Patch Changes
