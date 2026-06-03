@@ -55,6 +55,8 @@ export class MockEntryway {
   public serviceDid: string
   public plcRotationKey: Secp256k1Keypair
   public idResolver: IdResolver
+  // Emails the entryway received via proxied requestPasswordReset calls.
+  public passwordResetRequests: string[] = []
 
   private server: http.Server
   private terminator: HttpTerminator
@@ -88,6 +90,7 @@ export class MockEntryway {
     const idResolver = new IdResolver({ plcUrl: opts.plcUrl })
 
     const accounts = new Map<string, Account>()
+    const passwordResetRequests: string[] = []
 
     const getSigningKey = async (
       iss: string,
@@ -257,6 +260,15 @@ export class MockEntryway {
       },
     })
 
+    // Entryway-owned password reset. The PDS proxies requestPasswordReset
+    // here in entryway mode; record the email so tests can assert the proxy
+    // happened rather than the PDS handling it locally.
+    server.add(com.atproto.server.requestPasswordReset, {
+      handler: async ({ input }) => {
+        passwordResetRequests.push(input.body.email.toLowerCase())
+      },
+    })
+
     server.add(com.atproto.server.getSession, {
       auth: accessOrServiceAuth,
       handler: async ({ auth }) => {
@@ -396,6 +408,7 @@ export class MockEntryway {
 
     const instance = new MockEntryway(httpServer, terminator, idResolver, opts)
     instance.accounts = accounts
+    instance.passwordResetRequests = passwordResetRequests
 
     return instance
   }
