@@ -1,10 +1,10 @@
 import { jest } from '@jest/globals'
 import getPort from 'get-port'
-import { AtpAgent } from '@atproto/api'
+import type { AtpAgent } from '@atproto/api'
 import { cidForCbor } from '@atproto/common'
 import { Secp256k1Keypair } from '@atproto/crypto'
 import { TestPds, TestPlc, mockResolvers } from '@atproto/dev-env'
-import { DidString, HandleString } from '@atproto/syntax'
+import type { DidString, HandleString } from '@atproto/syntax'
 import { MockEntryway } from './entryway-mock.js'
 
 /**

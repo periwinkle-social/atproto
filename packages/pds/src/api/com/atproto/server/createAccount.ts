@@ -8,6 +8,7 @@ import {
   Secp256k1Keypair,
 } from '@atproto/crypto'
 import { type AtprotoData, ensureAtpDocument } from '@atproto/identity'
+import { l } from '@atproto/lex'
 import type { DidString } from '@atproto/syntax'
 import {
   AuthRequiredError,
@@ -46,6 +47,24 @@ import { safeResolveDidDoc } from './util.js'
  *
  * Spec: specs/auth-entryway/migration-task-reliability/SPEC.md §3.
  */
+
+// Ad-hoc schema for auth's Periwinkle-specific migrate-in pre-flight lookup.
+// Not a real lexicon in the shared registry, so it's defined inline with the
+// `l` builder rather than generated from `lexicons/`.
+const migrationLookupProcedure = l.procedure(
+  'social.pwkl.migration.lookup',
+  l.params({}),
+  l.jsonPayload({
+    did: l.string(),
+    pdsHostname: l.string(),
+    handle: l.string(),
+    password: l.string(),
+  }),
+  l.jsonPayload({
+    accessJwt: l.string(),
+    refreshJwt: l.string(),
+  }),
+)
 
 export default function (server: Server, ctx: AppContext) {
   server.add(com.atproto.server.createAccount, {
@@ -301,46 +320,22 @@ const validateInputsForGoatMigrateIn = async (
   }
 
   // Ask auth to verify the pre-flight binding and mint the session JWTs.
-  // Use the entrywayAdminClient's fetchHandler so the configured
-  // Authorization: Basic admin:<token> rides along; the lexicon for
-  // social.pwkl.migration.lookup is Periwinkle-specific and isn't loaded
-  // into the agent's lex registry, so the typed xrpc() helper isn't an
-  // option here.
-  const lookupRes = await ctx.entrywayAdminClient.fetchHandler(
-    '/xrpc/social.pwkl.migration.lookup',
+  // entrywayAdminClient carries the configured Authorization: Basic
+  // admin:<token> header, which xrpcSafe() automatically applies here.
+  const lookupResult = await ctx.entrywayAdminClient.xrpcSafe(
+    migrationLookupProcedure,
     {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
+      body: {
         did,
         pdsHostname: new URL(ctx.cfg.service.publicUrl).hostname,
         handle,
         password,
-      }),
+      },
     },
   )
-  if (!lookupRes.ok) {
-    let message = `migrate-in lookup failed (${lookupRes.status})`
-    try {
-      const body = (await lookupRes.json()) as { message?: string }
-      if (typeof body.message === 'string') {
-        message = `${message}: ${body.message}`
-      }
-    } catch {
-      // Non-JSON body — keep the generic message.
-    }
-    throw new InvalidRequestError(message)
-  }
-  const lookupBody = (await lookupRes.json()) as {
-    accessJwt?: unknown
-    refreshJwt?: unknown
-  }
-  if (
-    typeof lookupBody.accessJwt !== 'string' ||
-    typeof lookupBody.refreshJwt !== 'string'
-  ) {
+  if (!lookupResult.success) {
     throw new InvalidRequestError(
-      'migrate-in lookup returned a malformed token pair',
+      `migrate-in lookup failed: ${lookupResult.message ?? lookupResult.error}`,
     )
   }
 
@@ -358,8 +353,8 @@ const validateInputsForGoatMigrateIn = async (
     plcOp: null,
     deactivated: true,
     preMintedCreds: {
-      accessJwt: lookupBody.accessJwt,
-      refreshJwt: lookupBody.refreshJwt,
+      accessJwt: lookupResult.body.accessJwt,
+      refreshJwt: lookupResult.body.refreshJwt,
     },
   }
 }
