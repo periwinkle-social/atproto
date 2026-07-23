@@ -79,9 +79,6 @@
       "Bash(rm -rf /)",
       "Bash(rm -rf ~)"
     ],
-    "ask": [
-      "Bash(git push *)"
-    ]
-      
+    "ask": ["Bash(git push *)", "Bash(git push)"]
   }
 }
