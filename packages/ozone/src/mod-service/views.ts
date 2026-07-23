@@ -1,33 +1,33 @@
 import { sql } from 'kysely'
 import {
-  AppBskyActorDefs,
-  AtpAgent,
+  type AppBskyActorDefs,
+  type AtpAgent,
   ComAtprotoRepoGetRecord,
 } from '@atproto/api'
 import { chunkArray, dedupeStrs } from '@atproto/common'
-import { Keypair } from '@atproto/crypto'
-import { IdResolver } from '@atproto/identity'
+import type { Keypair } from '@atproto/crypto'
+import type { IdResolver } from '@atproto/identity'
 import { BlobRef } from '@atproto/lexicon'
 import { AtUri, INVALID_HANDLE, normalizeDatetimeAlways } from '@atproto/syntax'
-import { Database } from '../db/index.js'
-import { LabelRow } from '../db/schema/label.js'
+import type { Database } from '../db/index.js'
+import type { LabelRow } from '../db/schema/label.js'
 import { ids } from '../lexicon/lexicons.js'
-import { FeedViewPost } from '../lexicon/types/app/bsky/feed/defs.js'
-import { AccountView } from '../lexicon/types/com/atproto/admin/defs.js'
+import type { FeedViewPost } from '../lexicon/types/app/bsky/feed/defs.js'
+import type { AccountView } from '../lexicon/types/com/atproto/admin/defs.js'
 import {
-  Label,
+  type Label,
   validateSelfLabels,
 } from '../lexicon/types/com/atproto/label/defs.js'
-import { OutputSchema as ReportOutput } from '../lexicon/types/com/atproto/moderation/createReport.js'
+import type { OutputSchema as ReportOutput } from '../lexicon/types/com/atproto/moderation/createReport.js'
 import { REASONOTHER } from '../lexicon/types/com/atproto/moderation/defs.js'
 import {
-  BlobView,
-  ModEventView,
-  ModEventViewDetail,
-  RecordView,
-  RecordViewDetail,
-  RepoView,
-  SubjectStatusView,
+  type BlobView,
+  type ModEventView,
+  type ModEventViewDetail,
+  type RecordView,
+  type RecordViewDetail,
+  type RepoView,
+  type SubjectStatusView,
   isAccountEvent,
   isAgeAssuranceEvent,
   isAgeAssuranceOverrideEvent,
@@ -47,16 +47,20 @@ import {
   isRecordEvent,
   isScheduleTakedownEvent,
 } from '../lexicon/types/tools/ozone/moderation/defs.js'
-import { Un$Typed, asPredicate } from '../lexicon/util.js'
+import { type Un$Typed, asPredicate } from '../lexicon/util.js'
 import { dbLogger, httpLogger } from '../logger.js'
-import { ParsedLabelers } from '../util.js'
-import { moderationSubjectStatusQueryBuilder } from './status.js'
+import type { ParsedLabelers } from '../util.js'
 import {
-  ModSubject,
+  getStatusIdentifierFromSubject,
+  moderationSubjectStatusQueryBuilder,
+} from './status.js'
+import {
+  CHAT_CONVO_COLLECTION,
+  type ModSubject,
   subjectFromEventRow,
   subjectFromStatusRow,
 } from './subject.js'
-import {
+import type {
   ModerationEventRowWithHandle,
   ModerationSubjectStatusRowWithHandle,
 } from './types.js'
@@ -602,7 +606,7 @@ export class ModerationViews {
       this.db.db,
     )
       .where(
-        sql<string>`${ref(
+        sql<boolean>`${ref(
           'moderation_subject_status.blobCids',
         )} @> ${JSON.stringify(blobs.map((blob) => blob.ref.toString()))}`,
       )
@@ -642,10 +646,10 @@ export class ModerationViews {
     const res = await this.db.db
       .selectFrom('label')
       .where('label.uri', 'in', subjects)
-      .where((qb) =>
-        qb.where('label.exp', 'is', null).orWhere('label.exp', '>', now),
+      .where((eb) =>
+        eb.or([eb('label.exp', 'is', null), eb('label.exp', '>', now)]),
       )
-      .if(!includeNeg, (qb) => qb.where('neg', '=', false))
+      .$if(!includeNeg, (qb) => qb.where('neg', '=', false))
       .selectAll()
       .execute()
 
@@ -684,25 +688,27 @@ export class ModerationViews {
   ): Promise<Map<string, ModerationSubjectStatusRowWithHandle>> {
     if (!subjects.length) return new Map()
 
-    const parsedSubjects = subjects.map(parseSubjectId)
+    const parsedSubjects = subjects.map((subject) =>
+      getStatusIdentifierFromSubject(subject),
+    )
 
     const builder = moderationSubjectStatusQueryBuilder(this.db.db)
       //
-      .where((qb) => {
-        for (const sub of parsedSubjects) {
-          qb = qb.orWhere((qb) =>
-            qb
-              .where('moderation_subject_status.did', '=', sub.did)
-              .where(
+      .where((eb) =>
+        eb.or(
+          parsedSubjects.map((sub) =>
+            eb.and([
+              eb('moderation_subject_status.did', '=', sub.did),
+              eb(
                 'moderation_subject_status.recordPath',
                 '=',
                 sub.recordPath ?? '',
-              )
-              .where('moderation_subject_status.convoId', '=', ''),
-          )
-        }
-        return qb
-      })
+              ),
+              eb('moderation_subject_status.convoId', '=', sub.convoId),
+            ]),
+          ),
+        ),
+      )
 
     const [statusRes, accountsByDid] = await Promise.all([
       builder.execute(),
@@ -711,7 +717,7 @@ export class ModerationViews {
 
     return new Map(
       statusRes.map((row): [string, ModerationSubjectStatusRowWithHandle] => {
-        const subjectId = formatSubjectId(row.did, row.recordPath)
+        const subjectId = formatSubjectId(row.did, row.recordPath, row.convoId)
         const handle = accountsByDid.get(row.did)?.handle ?? INVALID_HANDLE
         return [subjectId, { ...row, handle }]
       }),
@@ -849,16 +855,10 @@ type RecordInfo = {
   indexedAt: string
 }
 
-function parseSubjectId(subject: string): { did: string; recordPath?: string } {
-  if (subject.startsWith('did:')) {
-    return { did: subject }
-  }
-  const uri = new AtUri(subject)
-  return { did: uri.hostname, recordPath: `${uri.collection}/${uri.rkey}` }
-}
-
-function formatSubjectId(did: string, recordPath?: string) {
-  return recordPath ? `at://${did}/${recordPath}` : did
+function formatSubjectId(did: string, recordPath?: string, convoId?: string) {
+  if (recordPath) return `at://${did}/${recordPath}`
+  if (convoId) return `at://${did}/${CHAT_CONVO_COLLECTION}/${convoId}`
+  return did
 }
 
 function findBlobRefs(value: unknown, refs: BlobRef[] = []) {

@@ -1,13 +1,18 @@
 import assert from 'node:assert'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import {
   AppBskyActorProfile,
-  AppBskyGraphGetStarterPacksWithMembership,
-  AtpAgent,
+  type AppBskyGraphGetStarterPacksWithMembership,
+  type AtpAgent,
   asPredicate,
   ids,
 } from '@atproto/api'
-import { RecordRef, SeedClient, TestNetwork, basicSeed } from '@atproto/dev-env'
+import {
+  type RecordRef,
+  type SeedClient,
+  TestNetwork,
+  basicSeed,
+} from '@atproto/dev-env'
 import { forSnapshot, paginateAll } from '../_util.js'
 
 const isValidProfile = asPredicate(AppBskyActorProfile.validateRecord)
@@ -20,6 +25,7 @@ describe('starter packs', () => {
   let sp2: RecordRef
   let sp3: RecordRef
   let sp4: RecordRef
+  let feedgen: RecordRef
 
   beforeAll(async () => {
     network = await TestNetwork.create({
@@ -30,7 +36,7 @@ describe('starter packs', () => {
     await basicSeed(sc)
     await network.processAll()
 
-    const feedgen = await sc.createFeedGen(
+    feedgen = await sc.createFeedGen(
       sc.dids.alice,
       'did:web:example.com',
       "alice's feedgen",
@@ -80,13 +86,10 @@ describe('starter packs', () => {
       [sc.dids.alice, sc.dids.frankie],
       [],
     )
-
-    await network.processAll()
   })
 
-  afterAll(async () => {
-    await network.close()
-  })
+  beforeEach(async () => network.processAll())
+  afterAll(async () => network?.close())
 
   it('gets actor starter packs.', async () => {
     const { data } = await agent.api.app.bsky.graph.getActorStarterPacks({
@@ -260,6 +263,53 @@ describe('starter packs', () => {
         },
       )
 
+      expect(data.starterPacks).toMatchObject([
+        expect.objectContaining({ uri: sp4.uriStr }),
+      ])
+    })
+  })
+
+  describe('searchStarterPacksV2', () => {
+    it('returns fully hydrated starter pack views', async () => {
+      const { data } = await agent.app.bsky.graph.searchStarterPacksV2({
+        q: 'starter',
+        limit: 10,
+      })
+
+      expect(data.starterPacks).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            uri: sp1.uriStr,
+            feeds: [expect.objectContaining({ uri: feedgen.uriStr })],
+            list: expect.objectContaining({ listItemCount: 3 }),
+            listItemsSample: expect.arrayContaining([
+              expect.objectContaining({
+                subject: expect.objectContaining({ did: sc.dids.bob }),
+              }),
+              expect.objectContaining({
+                subject: expect.objectContaining({ did: sc.dids.carol }),
+              }),
+              expect.objectContaining({
+                subject: expect.objectContaining({ did: sc.dids.dan }),
+              }),
+            ]),
+          }),
+        ]),
+      )
+    })
+
+    it('does not include starter packs with creator block relationships', async () => {
+      const { data } = await agent.app.bsky.graph.searchStarterPacksV2(
+        { q: 'starter', limit: 10 },
+        {
+          headers: await network.serviceHeaders(
+            sc.dids.frankie,
+            ids.AppBskyGraphSearchStarterPacksV2,
+          ),
+        },
+      )
+
+      expect(data.starterPacks).toHaveLength(1)
       expect(data.starterPacks).toMatchObject([
         expect.objectContaining({ uri: sp4.uriStr }),
       ])

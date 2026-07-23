@@ -1,35 +1,36 @@
 import { HOUR, MINUTE, dedupeStrs, mapDefined } from '@atproto/common'
 import {
-  $Typed,
-  Un$Typed,
-  Unknown$TypedObject,
-  UriString,
+  type $Typed,
+  type Un$Typed,
+  type Unknown$TypedObject,
+  type UriString,
+  atUri,
   getBlobCidString,
 } from '@atproto/lex'
 import {
   AtUri,
-  AtUriString,
-  DatetimeString,
-  DidString,
+  type AtUriString,
+  type DatetimeString,
+  type DidString,
   INVALID_HANDLE,
   normalizeDatetimeAlways,
 } from '@atproto/syntax'
-import { Actor, ProfileViewerState } from '../hydration/actor.js'
+import type { Actor, ProfileViewerState } from '../hydration/actor.js'
 import {
-  AssociatedSiteStandardRecord,
-  SiteStandardDocument,
-  SiteStandardPublication,
+  type AssociatedSiteStandardRecord,
+  type SiteStandardDocument,
+  type SiteStandardPublication,
   getSiteStandardRecordsFromHydrationMapsByRefs,
 } from '../hydration/external.js'
-import { FeedItem, Like, Post, Repost } from '../hydration/feed.js'
-import { Follow, Verification } from '../hydration/graph.js'
-import { HydrationState } from '../hydration/hydrator.js'
-import { Label } from '../hydration/label.js'
-import { RecordInfo, parseString } from '../hydration/util.js'
-import { ImageUriBuilder } from '../image/uri.js'
+import type { FeedItem, Like, Post, Repost } from '../hydration/feed.js'
+import type { Follow, Verification } from '../hydration/graph.js'
+import type { HydrationState } from '../hydration/hydrator.js'
+import type { Label } from '../hydration/label.js'
+import { type RecordInfo, parseString } from '../hydration/util.js'
+import type { ImageUriBuilder } from '../image/uri.js'
 import { app, site } from '../lexicons/index.js'
 import { viewsLogger } from '../logger.js'
-import { Notification } from '../proto/bsky_pb.js'
+import type { Notification } from '../proto/bsky_pb.js'
 import {
   estimateReadingTimeMinutes,
   validateStandardSiteForUrl,
@@ -42,79 +43,85 @@ import {
   uriToDid as creatorFromUri,
 } from '../util/uris.js'
 import {
-  ThreadItemValueBlocked,
-  ThreadItemValueNoUnauthenticated,
-  ThreadItemValueNotFound,
-  ThreadItemValuePost,
-  ThreadOtherAnchorPostNode,
-  ThreadOtherItemValuePost,
-  ThreadOtherPostNode,
-  ThreadTree,
-  ThreadTreeVisible,
+  type ThreadItemValueBlocked,
+  type ThreadItemValueNoUnauthenticated,
+  type ThreadItemValueNotFound,
+  type ThreadItemValuePost,
+  type ThreadOtherAnchorPostNode,
+  type ThreadOtherItemValuePost,
+  type ThreadOtherPostNode,
+  type ThreadTree,
+  type ThreadTreeVisible,
   sortTrimFlattenThreadTree,
 } from './threads-v2.js'
 import {
-  ActivitySubscription,
-  BlockedPost,
-  BookmarkView,
-  Embed,
-  EmbedView,
-  ExternalEmbed,
-  ExternalEmbedColorRgb,
-  ExternalEmbedSourceThemeView,
-  ExternalEmbedSourceView,
-  ExternalEmbedView,
-  FeedViewPost,
-  FollowRecord,
-  GeneratorView,
-  GetPostThreadV2QueryParams,
-  ImagesEmbed,
-  ImagesEmbedView,
-  KnownFollowers,
-  LabelerRecord,
-  LabelerView,
-  LabelerViewDetailed,
-  LikeRecord,
-  ListItemView,
-  ListView,
-  ListViewBasic,
-  MaybePostView,
-  NotFoundPost,
-  NotificationRecordDeleted,
-  NotificationView,
-  PostEmbedView,
-  PostRecord,
-  PostView,
-  ProfileAssociatedActivitySubscription,
-  ProfileAssociatedChat,
-  ProfileRecord,
-  ProfileView,
-  ProfileViewBasic,
-  ProfileViewDetailed,
-  ProfileViewer,
-  ReasonPin,
-  ReasonRepost,
-  RecordEmbed,
-  RecordEmbedView,
-  RecordEmbedViewInternal,
-  RecordWithMedia,
-  RecordWithMediaView,
-  ReplyRef,
-  RepostRecord,
-  SiteStandardPublicationRecord,
-  StarterPackView,
-  StarterPackViewBasic,
-  StatusView,
-  ThreadItem,
-  ThreadOtherItem,
-  ThreadViewPost,
-  ThreadgateView,
-  VerificationRecord,
-  VerificationState,
-  VerificationView,
-  VideoEmbed,
-  VideoEmbedView,
+  type ActivitySubscription,
+  type BlockedPost,
+  type BookmarkView,
+  type Embed,
+  type EmbedView,
+  type ExternalEmbed,
+  type ExternalEmbedColorRgb,
+  type ExternalEmbedSourceThemeView,
+  type ExternalEmbedSourceView,
+  type ExternalEmbedView,
+  type FeedViewPost,
+  type FollowRecord,
+  type GalleryEmbed,
+  type GalleryEmbedView,
+  type GalleryImageEmbed,
+  type GalleryImageEmbedView,
+  type GeneratorView,
+  type GetPostThreadV2QueryParams,
+  type ImagesEmbed,
+  type ImagesEmbedView,
+  type KnownFollowers,
+  type LabelerRecord,
+  type LabelerView,
+  type LabelerViewDetailed,
+  type LikeRecord,
+  type ListItemView,
+  type ListView,
+  type ListViewBasic,
+  type MaybePostView,
+  type NotFoundPost,
+  type NotificationRecordDeleted,
+  type NotificationView,
+  type PostEmbedView,
+  type PostRecord,
+  type PostView,
+  type ProfileAssociatedActivitySubscription,
+  type ProfileAssociatedChat,
+  type ProfileRecord,
+  type ProfileView,
+  type ProfileViewBasic,
+  type ProfileViewDetailed,
+  type ProfileViewer,
+  type ReasonPin,
+  type ReasonRepost,
+  type RecordEmbed,
+  type RecordEmbedView,
+  type RecordEmbedViewInternal,
+  type RecordWithMedia,
+  type RecordWithMediaView,
+  type ReplyRef,
+  type RepostRecord,
+  type SiteStandardPublicationRecord,
+  type StarterPackView,
+  type StarterPackViewBasic,
+  type StatusView,
+  type ThreadItem,
+  type ThreadOtherItem,
+  type ThreadViewPost,
+  type ThreadgateView,
+  type VerificationRecord,
+  type VerificationState,
+  type VerificationView,
+  type VideoEmbed,
+  type VideoEmbedView,
   isExternalEmbedType,
+  isGalleryEmbedType,
+  isGalleryImageEmbedType,
   isImagesEmbedType,
   isLabelerRecordType,
   isListRuleType,
@@ -126,7 +133,7 @@ import {
   isSelfLabelsType,
   isVideoEmbedType,
 } from './types.js'
-import { VideoUriBuilder, parsePostgate, parseThreadGate } from './util.js'
+import { type VideoUriBuilder, parsePostgate, parseThreadGate } from './util.js'
 
 const notificationDeletedRecord =
   app.bsky.notification.defs.recordDeleted.$build({})
@@ -134,6 +141,11 @@ const notificationDeletedRecord =
 // Pre-computed CID for the `notificationDeletedRecord`.
 const notificationDeletedRecordCid =
   'bafyreidad6nyekfa4a67yfb573ptxiv6s7kyxyg2ra6qbbemcruadvtuim'
+
+// Soft-limit for `app.bsky.embed.gallery#main.items`. The lexicon's
+// schema-level cap is 20, but clients are expected to enforce a soft limit
+// of 10 today. The AppView trims defensively at the view boundary.
+const GALLERY_SOFT_LIMIT = 10
 
 export class Views {
   public imgUriBuilder: ImageUriBuilder = this.opts.imgUriBuilder
@@ -348,11 +360,7 @@ export class Views {
   ): Un$Typed<ProfileViewBasic> | undefined {
     const actor = state.actors?.get(did)
     if (!actor) return
-    const profileUri = AtUri.make(
-      did,
-      app.bsky.actor.profile.$nsid,
-      'self',
-    ).toString()
+    const profileUri = atUri(did, app.bsky.actor.profile)
     const labels = [
       ...(state.labels?.getBySubject(did) ?? []),
       ...(state.labels?.getBySubject(profileUri) ?? []),
@@ -603,7 +611,7 @@ export class Views {
       return undefined
     }
 
-    const uri = AtUri.make(did, app.bsky.actor.status.$nsid, 'self').toString()
+    const uri = atUri(did, app.bsky.actor.status)
     const labels = state.labels?.getBySubject(uri)
 
     const minDuration = 5 * MINUTE
@@ -838,11 +846,7 @@ export class Views {
     const viewer = state.labelerViewers?.get(did)
     const aggs = state.labelerAggs?.get(did)
 
-    const uri = AtUri.make(
-      did,
-      app.bsky.labeler.service.$type,
-      'self',
-    ).toString()
+    const uri = atUri(did, app.bsky.labeler.service)
     const labels = [
       ...(state.labels?.getBySubject(uri) ?? []),
       ...this.selfLabels({
@@ -2090,6 +2094,8 @@ export class Views {
       return this.imagesEmbed(creatorFromUri(postUri), embed)
     } else if (isVideoEmbedType(embed)) {
       return this.videoEmbed(creatorFromUri(postUri), embed)
+    } else if (isGalleryEmbedType(embed)) {
+      return this.galleryEmbed(creatorFromUri(postUri), embed)
     } else if (isExternalEmbedType(embed)) {
       return this.externalEmbed(creatorFromUri(postUri), embed, state)
     } else if (isRecordEmbedType(embed)) {
@@ -2130,6 +2136,47 @@ export class Views {
       alt: embed.alt,
       aspectRatio: embed.aspectRatio,
       presentation: embed.presentation,
+    })
+  }
+
+  galleryEmbed(did: DidString, embed: GalleryEmbed): $Typed<GalleryEmbedView> {
+    // The lexicon's schema-level cap is 20, but clients are expected to
+    // enforce a soft limit of 10. Trim defensively at the view boundary so
+    // viewers see at most 10 items regardless of what was authored.
+    const items = embed.items.slice(0, GALLERY_SOFT_LIMIT).flatMap((item) => {
+      const view = this.galleryItemView(did, item)
+      return view ? [view] : []
+    })
+    return app.bsky.embed.gallery.view.$build({ items })
+  }
+
+  private galleryItemView(
+    did: DidString,
+    item: GalleryEmbed['items'][number],
+  ): $Typed<GalleryImageEmbedView> | undefined {
+    if (isGalleryImageEmbedType(item)) {
+      return this.galleryImageView(did, item)
+    }
+    return undefined
+  }
+
+  private galleryImageView(
+    did: DidString,
+    item: GalleryImageEmbed,
+  ): $Typed<GalleryImageEmbedView> {
+    return app.bsky.embed.gallery.viewImage.$build({
+      thumbnail: this.imgUriBuilder.getPresetUri(
+        'feed_thumbnail',
+        did,
+        getBlobCidString(item.image),
+      ),
+      fullsize: this.imgUriBuilder.getPresetUri(
+        'feed_fullsize',
+        did,
+        getBlobCidString(item.image),
+      ),
+      alt: item.alt,
+      aspectRatio: item.aspectRatio,
     })
   }
 
@@ -2528,11 +2575,14 @@ export class Views {
     let mediaEmbed:
       | $Typed<ImagesEmbedView>
       | $Typed<VideoEmbedView>
+      | $Typed<GalleryEmbedView>
       | $Typed<ExternalEmbedView>
     if (isImagesEmbedType(embed.media)) {
       mediaEmbed = this.imagesEmbed(creator, embed.media)
     } else if (isVideoEmbedType(embed.media)) {
       mediaEmbed = this.videoEmbed(creator, embed.media)
+    } else if (isGalleryEmbedType(embed.media)) {
+      mediaEmbed = this.galleryEmbed(creator, embed.media)
     } else if (isExternalEmbedType(embed.media)) {
       mediaEmbed = this.externalEmbed(creator, embed.media, state)
     } else {

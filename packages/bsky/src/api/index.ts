@@ -1,5 +1,5 @@
-import { Server } from '@atproto/xrpc-server'
-import { AppContext } from '../context.js'
+import type { Server } from '@atproto/xrpc-server'
+import type { AppContext } from '../context.js'
 import getProfile from './app/bsky/actor/getProfile.js'
 import getProfiles from './app/bsky/actor/getProfiles.js'
 import getSuggestions from './app/bsky/actor/getSuggestions.js'
@@ -39,6 +39,7 @@ import getRepostedBy from './app/bsky/feed/getRepostedBy.js'
 import getSuggestedFeeds from './app/bsky/feed/getSuggestedFeeds.js'
 import getTimeline from './app/bsky/feed/getTimeline.js'
 import searchPosts from './app/bsky/feed/searchPosts.js'
+import searchPostsV2 from './app/bsky/feed/searchPostsV2.js'
 import getActorStarterPacks from './app/bsky/graph/getActorStarterPacks.js'
 import getBlocks from './app/bsky/graph/getBlocks.js'
 import getFollowers from './app/bsky/graph/getFollowers.js'
@@ -59,6 +60,7 @@ import muteActor from './app/bsky/graph/muteActor.js'
 import muteActorList from './app/bsky/graph/muteActorList.js'
 import muteThread from './app/bsky/graph/muteThread.js'
 import searchStarterPacks from './app/bsky/graph/searchStarterPacks.js'
+import searchStarterPacksV2 from './app/bsky/graph/searchStarterPacksV2.js'
 import unmuteActor from './app/bsky/graph/unmuteActor.js'
 import unmuteActorList from './app/bsky/graph/unmuteActorList.js'
 import unmuteThread from './app/bsky/graph/unmuteThread.js'
@@ -97,6 +99,7 @@ import resolveHandle from './com/atproto/identity/resolveHandle.js'
 import queryLabels from './com/atproto/label/queryLabels.js'
 import getRecord from './com/atproto/repo/getRecord.js'
 import fetchLabels from './com/atproto/temp/fetchLabels.js'
+import internalGetProfiles from './internal/bsky/actor/getProfiles.js'
 
 export * as health from './health.js'
 
@@ -141,6 +144,7 @@ export default function (server: Server, ctx: AppContext) {
   getPostThreadV2(server, ctx)
   getPosts(server, ctx)
   searchPosts(server, ctx)
+  searchPostsV2(server, ctx)
   getActorLikes(server, ctx)
   getProfile(server, ctx)
   getProfiles(server, ctx)
@@ -161,6 +165,7 @@ export default function (server: Server, ctx: AppContext) {
   getStarterPacks(server, ctx)
   getStarterPacksWithMembership(server, ctx)
   searchStarterPacks(server, ctx)
+  searchStarterPacksV2(server, ctx)
   muteActor(server, ctx)
   unmuteActor(server, ctx)
   muteActorList(server, ctx)
@@ -208,4 +213,6 @@ export default function (server: Server, ctx: AppContext) {
   getRecord(server, ctx)
   fetchLabels(server, ctx)
   queryLabels(server, ctx)
+  // internal.bsky
+  internalGetProfiles(server, ctx)
 }
