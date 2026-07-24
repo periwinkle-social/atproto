@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.3](https://github.com/periwinkle-social/atproto/compare/atproto-pds-fork-v0.1.2...atproto-pds-fork-v0.1.3) (2026-07-24)
+
+
+### Bug Fixes
+
+* **oauth-client:** don't rely on AbortSignal.timeout (RN compat) ([5b51423](https://github.com/periwinkle-social/atproto/commit/5b51423be47ca8bc737551128f6f7dbaa4fa50db))
+
+
+### Miscellaneous
+
+* use org-level RELEASE_PLEASE_PAT for release-please workflow ([#15](https://github.com/periwinkle-social/atproto/issues/15)) ([4a6daed](https://github.com/periwinkle-social/atproto/commit/4a6daeda78900c633a3862524f6a3453bb327889))
+
 ## [0.1.2](https://github.com/periwinkle-social/atproto/compare/atproto-pds-fork-v0.1.1...atproto-pds-fork-v0.1.2) (2026-06-03)
 
 
