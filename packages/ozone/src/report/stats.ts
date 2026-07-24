@@ -1,13 +1,15 @@
-import { Selectable, sql } from 'kysely'
+import { type Selectable, sql } from 'kysely'
 import { MINUTE } from '@atproto/common'
-import { Database } from '../db/index.js'
+import type { Database } from '../db/index.js'
 import { ComputedAtIdKeyset, paginate } from '../db/pagination.js'
-import { ReportStat } from '../db/schema/report_stat.js'
+import type { ReportStat } from '../db/schema/report_stat.js'
 import { jsonb } from '../db/types.js'
 import { dbLogger } from '../logger.js'
 
 /**
  * Grouped report types. Stats are computed per group rather than per individual report type.
+ * Frontend should match for proper stat lookup.
+ * https://github.com/bluesky-social/ozone/blob/main/components/reports/helpers/getType.ts
  */
 export const REPORT_TYPE_GROUPS: Record<string, string[]> = {
   Legacy: [
@@ -672,7 +674,7 @@ export class ReportStatsService {
         del =
           r.reportTypes !== null
             ? del.where(
-                sql`"reportTypes"::jsonb = ${jsonb(r.reportTypes)}::jsonb`,
+                sql<boolean>`"reportTypes"::jsonb = ${jsonb(r.reportTypes)}::jsonb`,
               )
             : del.where('reportTypes', 'is', null)
         await del.execute()
@@ -720,7 +722,7 @@ export class ReportStatsService {
     }
     if (group.reportTypes !== null) {
       qb = qb.where(
-        sql`"reportTypes"::jsonb = ${jsonb(group.reportTypes)}::jsonb`,
+        sql<boolean>`"reportTypes"::jsonb = ${jsonb(group.reportTypes)}::jsonb`,
       )
     } else {
       qb = qb.where('reportTypes', 'is', null)
@@ -786,7 +788,9 @@ export class ReportStatsService {
       qb = qb.where('moderatorDid', 'is', null)
     }
     if (reportTypes !== null) {
-      qb = qb.where(sql`"reportTypes"::jsonb = ${jsonb(reportTypes)}::jsonb`)
+      qb = qb.where(
+        sql<boolean>`"reportTypes"::jsonb = ${jsonb(reportTypes)}::jsonb`,
+      )
     } else {
       qb = qb.where('reportTypes', 'is', null)
     }

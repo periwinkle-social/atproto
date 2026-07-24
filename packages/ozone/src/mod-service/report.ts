@@ -1,13 +1,14 @@
 import { sql } from 'kysely'
 import { AtUri } from '@atproto/syntax'
-import { Database } from '../db/index.js'
-import { Report } from '../db/schema/report.js'
-import { QueryParams } from '../lexicon/types/tools/ozone/report/queryReports.js'
+import type { Database } from '../db/index.js'
+import type { Report } from '../db/schema/report.js'
+import type { QueryParams } from '../lexicon/types/tools/ozone/report/queryReports.js'
 import {
   AlreadyInTargetState,
   InvalidStateTransition,
   handleReportUpdate,
 } from '../report/handle-report-update.js'
+import { CHAT_CONVO_COLLECTION, CHAT_MESSAGE_COLLECTION } from './subject.js'
 
 export type ReportWithEvent = Omit<Report, 'id'> & {
   id: number
@@ -43,16 +44,29 @@ export async function queryReports(
   builder = builder.where('r.status', '=', params.status)
 
   if (params.subject) {
-    const isRecord = params.subject.startsWith('at://')
-    if (isRecord) {
+    const isAtUri = params.subject.startsWith('at://')
+    if (isAtUri) {
       const uri = new AtUri(params.subject)
-      builder = builder
-        .where('r.did', '=', uri.host)
-        .where('r.recordPath', '=', `${uri.collection}/${uri.rkey}`)
+      if (uri.collection === CHAT_MESSAGE_COLLECTION) {
+        builder = builder
+          .where('r.did', '=', uri.host)
+          .where('r.subjectMessageId', '=', uri.rkey)
+      } else if (uri.collection === CHAT_CONVO_COLLECTION) {
+        builder = builder
+          .where('r.did', '=', uri.host)
+          .where('r.subjectConvoId', '=', uri.rkey)
+          .where('r.subjectMessageId', 'is', null)
+      } else {
+        builder = builder
+          .where('r.did', '=', uri.host)
+          .where('r.recordPath', '=', `${uri.collection}/${uri.rkey}`)
+      }
     } else {
       builder = builder
         .where('r.did', '=', params.subject)
         .where('r.recordPath', '=', '')
+        .where('r.subjectMessageId', 'is', null)
+        .where('r.subjectConvoId', 'is', null)
     }
   }
 
@@ -60,13 +74,19 @@ export async function queryReports(
     builder = builder.where('r.did', '=', params.did)
   }
 
-  if (params.subjectType) {
-    const normalizedType = params.subjectType as 'account' | 'record'
-    if (normalizedType === 'account') {
-      builder = builder.where('r.recordPath', '=', '')
-    } else if (normalizedType === 'record') {
-      builder = builder.where('r.recordPath', '!=', '')
-    }
+  if (params.subjectType === 'account') {
+    builder = builder
+      .where('r.recordPath', '=', '')
+      .where('r.subjectMessageId', 'is', null)
+      .where('r.subjectConvoId', 'is', null)
+  } else if (params.subjectType === 'record') {
+    builder = builder.where('r.recordPath', '!=', '')
+  } else if (params.subjectType === 'message') {
+    builder = builder.where('r.subjectMessageId', 'is not', null)
+  } else if (params.subjectType === 'conversation') {
+    builder = builder
+      .where('r.subjectConvoId', 'is not', null)
+      .where('r.subjectMessageId', 'is', null)
   }
 
   if (params.collections?.length) {
@@ -74,7 +94,9 @@ export async function queryReports(
     const collectionConditions = params.collections.map(
       (collection) => sql`r."recordPath" LIKE ${`${collection}/%`}`,
     )
-    builder = builder.where(sql`(${sql.join(collectionConditions, sql` OR `)})`)
+    builder = builder.where(
+      sql<boolean>`(${sql.join(collectionConditions, sql` OR `)})`,
+    )
   }
 
   if (params.reportTypes?.length) {
@@ -112,12 +134,12 @@ export async function queryReports(
     const [sortValue, id] = params.cursor.split('::')
     const sortCol = sortField === 'updatedAt' ? 'r.updatedAt' : 'r.createdAt'
     if (sortDirection === 'desc') {
-      builder = builder.where(sql`(
+      builder = builder.where(sql<boolean>`(
         ${sql.ref(sortCol)} < ${sortValue}
         OR (${sql.ref(sortCol)} = ${sortValue} AND r.id < ${Number(id)})
       )`)
     } else {
-      builder = builder.where(sql`(
+      builder = builder.where(sql<boolean>`(
         ${sql.ref(sortCol)} > ${sortValue}
         OR (${sql.ref(sortCol)} = ${sortValue} AND r.id > ${Number(id)})
       )`)
@@ -171,6 +193,25 @@ export async function getReportById(
       'me.meta',
     ])
     .executeTakeFirst()
+}
+
+export async function getReportsByIds(
+  db: Database,
+  ids: number[],
+): Promise<ReportWithEvent[]> {
+  if (!ids.length) return []
+  return reportQuery(db)
+    .where('r.id', 'in', ids)
+    .selectAll('r')
+    .select([
+      'me.subjectDid',
+      'me.subjectUri',
+      'me.subjectCid',
+      'me.createdBy as reportedBy',
+      'me.comment',
+      'me.meta',
+    ])
+    .execute()
 }
 
 export async function getLatestReport(

@@ -16,8 +16,8 @@
       "Bash(find:*)",
       "Bash(git checkout:*)",
       "Bash(git diff:*)",
-      "Bash(git stash:*)",
       "Bash(git stash pop:*)",
+      "Bash(git stash:*)",
       "Bash(grep:*)",
       "Bash(head:*)",
       "Bash(host:*)",
@@ -28,14 +28,15 @@
       "Bash(pnpm --filter @atproto/*:*)",
       "Bash(pnpm -r:*)",
       "Bash(pnpm -w exec vitest:*)",
-      "Bash(pnpm -w run verify:types)",
       "Bash(pnpm build:*)",
       "Bash(pnpm codegen:*)",
+      "Bash(pnpm dev)",
       "Bash(pnpm exec eslint:*)",
       "Bash(pnpm exec jest:*)",
       "Bash(pnpm exec prettier:*)",
       "Bash(pnpm exec tsc:*)",
       "Bash(pnpm exec vitest:*)",
+      "Bash(pnpm i18n *)",
       "Bash(pnpm install:*)",
       "Bash(pnpm run build:*)",
       "Bash(pnpm run i18n)",
@@ -56,21 +57,28 @@
       "Bash(whoami)",
       "Bash(whois:*)",
       "WebFetch",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git push -u origin chore/sync-upstream-2026-07-23)",
+      "Bash(git push origin chore/sync-upstream-2026-07-23)"
     ],
     "deny": [
       "Bash(sudo *)",
       "Bash(brew install *)",
       "Bash(dropdb *)",
       "Bash(git clean -fd *)",
+      "Bash(git push * main)",
+      "Bash(git push * main:*)",
+      "Bash(git push * HEAD:main)",
+      "Bash(git push * HEAD:main:*)",
+      "Bash(git push * refs/heads/main)",
+      "Bash(git push * master)",
+      "Bash(git push * master:*)",
+      "Bash(git push * HEAD:master)",
+      "Bash(git push * refs/heads/master)",
+      "Bash(git push)",
       "Bash(rm -rf /)",
       "Bash(rm -rf ~)"
     ],
-    "ask": [
-      "Bash(git push *)",
-      "Bash(git push)"
-      
-    ]
-      
+    "ask": ["Bash(git push *)", "Bash(git push)"]
   }
 }

@@ -1,21 +1,24 @@
 import * as plc from '@did-plc/lib'
 import { isEmailValid } from '@hapi/address'
 import { isDisposableEmail } from 'disposable-email-domains-js'
-import { DidDocument, MINUTE, check } from '@atproto/common'
-import { ExportableKeypair, Keypair, Secp256k1Keypair } from '@atproto/crypto'
-import { AtprotoData, ensureAtpDocument } from '@atproto/identity'
-import { DidString } from '@atproto/syntax'
+import { MINUTE, check } from '@atproto/common'
+import {
+  type ExportableKeypair,
+  type Keypair,
+  Secp256k1Keypair,
+} from '@atproto/crypto'
+import { type AtprotoData, ensureAtpDocument } from '@atproto/identity'
+import { l } from '@atproto/lex'
+import type { DidString } from '@atproto/syntax'
 import {
   AuthRequiredError,
   InvalidRequestError,
-  Server,
+  type Server,
 } from '@atproto/xrpc-server'
-import { AccountStatus } from '../../../../account-manager/account-manager.js'
 import { NEW_PASSWORD_MAX_LENGTH } from '../../../../account-manager/helpers/scrypt.js'
-import { AppContext } from '../../../../context.js'
+import type { AppContext } from '../../../../context.js'
 import { baseNormalizeAndValidate } from '../../../../handle/index.js'
 import { com } from '../../../../lexicons/index.js'
-import { syncEvtDataFromCommit } from '../../../../sequencer/index.js'
 import { safeResolveDidDoc } from './util.js'
 
 /**
@@ -44,6 +47,24 @@ import { safeResolveDidDoc } from './util.js'
  *
  * Spec: specs/auth-entryway/migration-task-reliability/SPEC.md §3.
  */
+
+// Ad-hoc schema for auth's Periwinkle-specific migrate-in pre-flight lookup.
+// Not a real lexicon in the shared registry, so it's defined inline with the
+// `l` builder rather than generated from `lexicons/`.
+const migrationLookupProcedure = l.procedure(
+  'social.pwkl.migration.lookup',
+  l.params({}),
+  l.jsonPayload({
+    did: l.string(),
+    pdsHostname: l.string(),
+    handle: l.string(),
+    password: l.string(),
+  }),
+  l.jsonPayload({
+    accessJwt: l.string(),
+    refreshJwt: l.string(),
+  }),
+)
 
 export default function (server: Server, ctx: AppContext) {
   server.add(com.atproto.server.createAccount, {
@@ -80,86 +101,104 @@ export default function (server: Server, ctx: AppContext) {
       const preMintedCreds =
         'preMintedCreds' in validated ? validated.preMintedCreds : undefined
 
-      let didDoc: DidDocument | undefined
-      let creds: { accessJwt: string; refreshJwt: string }
       await ctx.actorStore.create(did, signingKey)
+
       try {
-        const commit = await ctx.actorStore.transact(did, (actorTxn) =>
-          actorTxn.repo.createRepo([]),
-        )
+        const commit = await ctx.actorStore.transact(did, (actorTxn) => {
+          return actorTxn.repo.createRepo([])
+        })
+
+        const canTombstone =
+          // @NOTE IMPORTANT Because the user may be bringing their own did, we
+          // must make sure not to tombstone their did on failure if we didn't
+          // create it here.
+          !ctx.entrywayClient && !input.body.did && !!plcOp
 
         // Generate a real did with PLC
         if (plcOp) {
+          await ctx.plcClient.sendOperation(did, plcOp)
+        }
+
+        try {
+          const didDoc = await safeResolveDidDoc(ctx, did, true)
+
+          let creds: { accessJwt: string; refreshJwt: string }
+          if (preMintedCreds) {
+            // Goat path: auth already minted the session. Create the
+            // PDS-local account row only (no PDS-side refresh row); the
+            // surfaced tokens are auth's, verified by the entryway-mode
+            // PDS against the same oauth signing key it pins for
+            // createSession.
+            await ctx.accountManager.createAccount({
+              did,
+              handle,
+              email,
+              password,
+              repoCid: commit.cid,
+              repoRev: commit.rev,
+              inviteCode,
+              deactivated,
+            })
+            creds = preMintedCreds
+          } else {
+            creds = await ctx.accountManager.createAccountAndSession({
+              did,
+              handle,
+              email,
+              password,
+              repoCid: commit.cid,
+              repoRev: commit.rev,
+              inviteCode,
+              deactivated,
+            })
+          }
+
           try {
-            await ctx.plcClient.sendOperation(did, plcOp)
+            const sequenceEvt = !deactivated
+            if (sequenceEvt) {
+              await ctx.sequencer.sequenceAccountCreation(did, handle, commit)
+            }
+
+            try {
+              await ctx.actorStore
+                .clearReservedKeypair(signingKey.did(), did)
+                .catch((err) => {
+                  // @NOTE This is a cleanup operation so we won't fail the whole
+                  // flow if it fails, but we log it just in case
+                  req.log.error(
+                    { did, signingKeyDid: signingKey.did(), err },
+                    'Failed to clear reserved keypair',
+                  )
+                })
+
+              return {
+                encoding: 'application/json' as const,
+                body: {
+                  handle,
+                  did: did,
+                  // @ts-expect-error https://github.com/bluesky-social/atproto/pull/4406
+                  didDoc,
+                  accessJwt: creds.accessJwt,
+                  refreshJwt: creds.refreshJwt,
+                },
+              }
+            } catch (err) {
+              if (sequenceEvt) await ctx.sequencer.sequenceAccountDeletion(did)
+              throw err
+            }
           } catch (err) {
-            req.log.error(
-              { didKey: ctx.plcRotationKey.did(), handle },
-              'failed to create did:plc',
-            )
+            await ctx.accountManager.deleteAccount(did)
             throw err
           }
+        } catch (err) {
+          if (canTombstone) {
+            await ctx.plcClient.tombstone(did, ctx.plcRotationKey)
+          }
+          throw err
         }
-
-        didDoc = await safeResolveDidDoc(ctx, did, true)
-
-        if (preMintedCreds) {
-          // Goat path: auth already minted the session. Create the
-          // PDS-local account row only (no PDS-side refresh row); the
-          // surfaced tokens are auth's, verified by the entryway-mode
-          // PDS against the same oauth signing key it pins for
-          // createSession.
-          await ctx.accountManager.createAccount({
-            did,
-            handle,
-            email,
-            password,
-            repoCid: commit.cid,
-            repoRev: commit.rev,
-            inviteCode,
-            deactivated,
-          })
-          creds = preMintedCreds
-        } else {
-          creds = await ctx.accountManager.createAccountAndSession({
-            did,
-            handle,
-            email,
-            password,
-            repoCid: commit.cid,
-            repoRev: commit.rev,
-            inviteCode,
-            deactivated,
-          })
-        }
-
-        if (!deactivated) {
-          await ctx.sequencer.sequenceIdentityEvt(did, handle)
-          await ctx.sequencer.sequenceAccountEvt(did, AccountStatus.Active)
-          await ctx.sequencer.sequenceCommit(did, commit)
-          await ctx.sequencer.sequenceSyncEvt(
-            did,
-            syncEvtDataFromCommit(commit),
-          )
-        }
-        await ctx.accountManager.updateRepoRoot(did, commit.cid, commit.rev)
-        await ctx.actorStore.clearReservedKeypair(signingKey.did(), did)
       } catch (err) {
-        // this will only be reached if the actor store _did not_ exist before
         await ctx.actorStore.destroy(did)
         throw err
-      }
-
-      return {
-        encoding: 'application/json' as const,
-        body: {
-          handle,
-          did: did,
-          // @ts-expect-error https://github.com/bluesky-social/atproto/pull/4406
-          didDoc,
-          accessJwt: creds.accessJwt,
-          refreshJwt: creds.refreshJwt,
-        },
       }
     },
   })
@@ -178,9 +217,10 @@ const validateInputsForEntrywayPds = async (
     return validateInputsForGoatMigrateIn(ctx, input, requester)
   }
 
-  const { did, plcOp } = input
   const handle = baseNormalizeAndValidate(input.handle)
-  if (!did || !input.plcOp) {
+
+  const { did, plcOp } = input
+  if (!did || !plcOp) {
     throw new InvalidRequestError(
       'non-entryway pds requires bringing a DID and plcOp',
     )
@@ -280,46 +320,22 @@ const validateInputsForGoatMigrateIn = async (
   }
 
   // Ask auth to verify the pre-flight binding and mint the session JWTs.
-  // Use the entrywayAdminClient's fetchHandler so the configured
-  // Authorization: Basic admin:<token> rides along; the lexicon for
-  // social.pwkl.migration.lookup is Periwinkle-specific and isn't loaded
-  // into the agent's lex registry, so the typed xrpc() helper isn't an
-  // option here.
-  const lookupRes = await ctx.entrywayAdminClient.fetchHandler(
-    '/xrpc/social.pwkl.migration.lookup',
+  // entrywayAdminClient carries the configured Authorization: Basic
+  // admin:<token> header, which xrpcSafe() automatically applies here.
+  const lookupResult = await ctx.entrywayAdminClient.xrpcSafe(
+    migrationLookupProcedure,
     {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
+      body: {
         did,
         pdsHostname: new URL(ctx.cfg.service.publicUrl).hostname,
         handle,
         password,
-      }),
+      },
     },
   )
-  if (!lookupRes.ok) {
-    let message = `migrate-in lookup failed (${lookupRes.status})`
-    try {
-      const body = (await lookupRes.json()) as { message?: string }
-      if (typeof body.message === 'string') {
-        message = `${message}: ${body.message}`
-      }
-    } catch {
-      // Non-JSON body — keep the generic message.
-    }
-    throw new InvalidRequestError(message)
-  }
-  const lookupBody = (await lookupRes.json()) as {
-    accessJwt?: unknown
-    refreshJwt?: unknown
-  }
-  if (
-    typeof lookupBody.accessJwt !== 'string' ||
-    typeof lookupBody.refreshJwt !== 'string'
-  ) {
+  if (!lookupResult.success) {
     throw new InvalidRequestError(
-      'migrate-in lookup returned a malformed token pair',
+      `migrate-in lookup failed: ${lookupResult.message ?? lookupResult.error}`,
     )
   }
 
@@ -337,8 +353,8 @@ const validateInputsForGoatMigrateIn = async (
     plcOp: null,
     deactivated: true,
     preMintedCreds: {
-      accessJwt: lookupBody.accessJwt,
-      refreshJwt: lookupBody.refreshJwt,
+      accessJwt: lookupResult.body.accessJwt,
+      refreshJwt: lookupResult.body.refreshJwt,
     },
   }
 }
@@ -415,7 +431,7 @@ const validateInputsForLocalPds = async (
   } else {
     const formatted = await formatDidAndPlcOp(ctx, handle, input, signingKey)
     did = formatted.did as DidString
-    plcOp = formatted.plcOp
+    plcOp = formatted.op
   }
 
   return {
@@ -435,10 +451,7 @@ const formatDidAndPlcOp = async (
   handle: string,
   input: com.atproto.server.createAccount.$InputBody,
   signingKey: Keypair,
-): Promise<{
-  did: string
-  plcOp: plc.Operation | null
-}> => {
+) => {
   // if the user is not bringing a DID, then we format a create op for PLC
   const rotationKeys = [ctx.plcRotationKey.did()]
   if (ctx.cfg.identity.recoveryDidKey) {
@@ -447,17 +460,13 @@ const formatDidAndPlcOp = async (
   if (input.recoveryKey) {
     rotationKeys.unshift(input.recoveryKey)
   }
-  const plcCreate = await plc.createOp({
+  return plc.createOp({
     signingKey: signingKey.did(),
     rotationKeys,
     handle,
     pds: ctx.cfg.service.publicUrl,
     signer: ctx.plcRotationKey,
   })
-  return {
-    did: plcCreate.did,
-    plcOp: plcCreate.op,
-  }
 }
 const validateAtprotoData = (
   data: AtprotoData,
